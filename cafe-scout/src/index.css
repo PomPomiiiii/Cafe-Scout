@@ -6,53 +6,55 @@ html, body, #root {
   height: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
+  overscroll-behavior: none; /* prevents pull-to-refresh on mobile */
 }
 
 button { cursor: pointer; font-family: inherit; }
 img { display: block; max-width: 100%; }
 
-::-webkit-scrollbar { width: 4px; }
+/* Prevent font size adjustment on iOS */
+html { -webkit-text-size-adjust: 100%; }
+
+/* Remove tap highlight on mobile */
+* { -webkit-tap-highlight-color: transparent; }
+
+::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D4C4B0; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #B8A090; }
 
+/* ── Animations ── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* Google Maps info window overrides */
+/* ── Google Maps info window overrides ── */
 .gm-style .gm-style-iw-c {
   border-radius: 16px !important;
   padding: 0 !important;
-  /* Control the width here instead of inline */
-  width: 240px !important; 
+  width: 240px !important;
   max-width: 240px !important;
   max-height: fit-content !important;
-  overflow: visible !important; /* Changed to visible */
+  overflow: visible !important;
   box-shadow: 0 8px 32px rgba(44,24,16,0.15) !important;
 }
 
-/* This is the container that usually causes the scrollbar */
 .gm-style .gm-style-iw-d {
-  overflow: hidden !important; /* Kills the scrollbar */
+  overflow: hidden !important;
   max-height: none !important;
 }
 
 .gm-style .gm-style-iw-tc::after { background: #FAF7F2 !important; }
 
-/* Keep this to hide the X */
-.gm-ui-hover-effect {
-  display: none !important;
-}
-
-.gm-style-iw-ch {
-  display: none !important;
-}
+.gm-ui-hover-effect { display: none !important; }
+.gm-style-iw-ch { display: none !important; }

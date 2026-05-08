@@ -4,10 +4,10 @@ import { buildCafePrompt } from "./prompts/cafePrompt";
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_KEY);
 
 /**
- * Sends nearby cafés + user message to Gemini
+ * Sends nearby cafés + user message to Gemini and returns structured JSON
  * @param {Array} cafes
  * @param {string} userMessage
- * @returns {Promise<string>}
+ * @returns {Promise<Object>}
  */
 export async function askGemini(cafes, userMessage) {
   // Validate API key
@@ -15,36 +15,53 @@ export async function askGemini(cafes, userMessage) {
     throw new Error("Missing Gemini API key");
   }
 
-  // Initialize model
+  // Initialize model - gemini-3.1-flash-lite-preview is great for speed
   const model = genAI.getGenerativeModel({
     model: "gemini-3.1-flash-lite-preview",
+    // We force the model to output JSON
+    generationConfig: {
+        responseMimeType: "application/json",
+    }
   });
 
-  // Build compact café context
+  // Build compact café context for the AI to "read"
   const cafeContext = cafes
-    .slice(0, 10)
-    .map(
-      (c, i) => `
-${i + 1}. ${c.name}
-Rating: ${c.rating || "N/A"} (${c.totalRatings || 0} reviews)
-Status: ${c.isOpen ? "Open now" : "Closed"}
-Address: ${c.address}
-`,
-    )
+    .slice(0, 12) // Limit to 12 to save tokens and stay relevant
+    .map((c, i) => {
+        return `ID: ${i} | Name: ${c.name} | Rating: ${c.rating || "N/A"} | Reviews: ${c.totalRatings || 0} | Open: ${c.isOpen ? "Yes" : "No"} | Address: ${c.address}`;
+    })
     .join("\n");
 
-  // Use external prompt builder
+  // Build the prompt using your external builder
   const prompt = buildCafePrompt(cafeContext, userMessage);
 
   try {
     const result = await model.generateContent(prompt);
-
     const response = await result.response;
+    let text = response.text();
 
-    return response.text();
+    /**
+     * CLEANING LOGIC:
+     * Sometimes AI models wrap JSON in markdown blocks like ```json ... ```
+     * This regex removes those blocks to prevent JSON.parse() from failing.
+     */
+    const cleanJson = text.replace(/```json|```/g, "").trim();
+    
+    const parsedResponse = JSON.parse(cleanJson);
+
+    // Ensure we always return the expected structure even if the AI misses a key
+    return {
+      text: parsedResponse.text || "Here are some spots I found:",
+      cafes: parsedResponse.cafes || []
+    };
+
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Gemini API or Parsing Error:", error);
 
-    return "Sorry, I’m having trouble finding café recommendations right now ☕";
+    // Fallback: Return a friendly error object that won't break the UI loop
+    return { 
+      text: "Sorry, I’m having trouble processing that right now. Could you try again? ☕", 
+      cafes: [] 
+    };
   }
 }

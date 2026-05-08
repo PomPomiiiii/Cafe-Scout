@@ -1,7 +1,29 @@
 import { useState, useRef, useEffect } from 'react'
 import { askGemini } from '../services/geminiApi'
 
-export default function ChatPanel({ cafes, selectedCafe, onClose }) {
+// 1. Move CafeCard outside the main component for cleaner code
+const CafeCard = ({ cafe, onClick }) => (
+  <div 
+    style={{ ...S.cafeCard, cursor: 'pointer' }} 
+    onClick={onClick}
+  >
+    <div style={S.cardContent}>
+      <div style={S.cardTitle}>{cafe.name}</div>
+      <div style={S.cardMeta}>
+        <span style={{ color: '#EAB308' }}>★</span> {cafe.rating} 
+        <span style={{ color: '#A89070', marginLeft: 4 }}>({cafe.reviews})</span>
+        {cafe.isOpen !== undefined && (
+           <span style={{ marginLeft: 8, color: cafe.isOpen ? '#1D9E75' : '#C41E3A' }}>
+             {cafe.isOpen ? '● Open' : '○ Closed'}
+           </span>
+        )}
+      </div>
+      <div style={S.cardAddress}>{cafe.address}</div>
+    </div>
+  </div>
+);
+
+export default function ChatPanel({ cafes, onCafeClick, onClose }) {
   const [messages, setMessages] = useState([{
     role: 'ai',
     text: "Hi! I'm Scout ☕ Tell me what kind of café you're looking for and I'll find the perfect match nearby!"
@@ -16,25 +38,31 @@ export default function ChatPanel({ cafes, selectedCafe, onClose }) {
   }, [messages])
 
   async function send(text) {
-    const msg = (text || input).trim()
-    if (!msg || loading || cafes.length === 0) return
-    setMessages(p => [...p, { role: 'user', text: msg }])
-    setInput('')
-    setLoading(true)
+    const msg = (text || input).trim();
+    if (!msg || loading || cafes.length === 0) return;
+
+    setMessages(p => [...p, { role: 'user', text: msg }]);
+    setInput('');
+    setLoading(true);
+
     try {
-      const reply = await askGemini(cafes, msg)
-      setMessages(p => [...p, { role: 'ai', text: reply }])
+      const response = await askGemini(cafes, msg);
+      setMessages(p => [...p, { 
+        role: 'ai', 
+        text: response.text, 
+        cafes: response.cafes 
+      }]);
     } catch {
-      setMessages(p => [...p, { role: 'ai', text: "Sorry, I couldn't get a suggestion right now. Try again!" }])
+      setMessages(p => [...p, { role: 'ai', text: "Sorry, I couldn't get a suggestion right now." }]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   const chips = ['Quiet to study 📚', 'Best rated ⭐', 'Outdoor seating 🌿', 'Good for groups 👥', 'Pet friendly 🐾']
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 280 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 280, background: 'white' }}>
 
       {/* Header */}
       <div style={S.header}>
@@ -48,10 +76,15 @@ export default function ChatPanel({ cafes, selectedCafe, onClose }) {
         <button onClick={onClose} style={S.closeBtn}>✕</button>
       </div>
 
-      {/* Messages */}
+      {/* Messages Area */}
       <div style={S.messages}>
         {messages.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+          <div key={i} style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
+            gap: 6
+          }}>
             <div style={{
               ...S.bubble,
               ...(msg.role === 'user' ? S.bubbleUser : S.bubbleAi),
@@ -59,6 +92,19 @@ export default function ChatPanel({ cafes, selectedCafe, onClose }) {
             }}>
               {msg.text}
             </div>
+
+            {/* Render Café Cards with the click handler */}
+            {msg.role === 'ai' && msg.cafes && msg.cafes.length > 0 && (
+              <div style={S.cardContainer}>
+                {msg.cafes.map((cafe, idx) => (
+                  <CafeCard 
+                    key={idx} 
+                    cafe={cafe} 
+                    onClick={() => onCafeClick(cafe)} 
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ))}
 
@@ -77,7 +123,7 @@ export default function ChatPanel({ cafes, selectedCafe, onClose }) {
           </div>
         )}
 
-        {/* Chips on first message */}
+        {/* Action Chips */}
         {messages.length === 1 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 4 }}>
             {chips.map(chip => (
@@ -98,11 +144,10 @@ export default function ChatPanel({ cafes, selectedCafe, onClose }) {
             ))}
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input Row */}
       <div style={S.inputRow}>
         <input
           value={input}
@@ -127,6 +172,10 @@ export default function ChatPanel({ cafes, selectedCafe, onClose }) {
           0%,60%,100% { transform: translateY(0); opacity: 0.4; }
           30% { transform: translateY(-4px); opacity: 1; }
         }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
     </div>
   )
@@ -138,51 +187,19 @@ const S = {
     padding: '12px 16px', borderBottom: '1px solid #F0E8DF', flexShrink: 0,
   },
   dot: { width: 8, height: 8, borderRadius: '50%', background: '#1D9E75' },
-  title: {
-    fontSize: 13, fontWeight: 500, color: '#2C1810',
-    fontFamily: "'DM Sans', system-ui, sans-serif",
-  },
+  title: { fontSize: 13, fontWeight: 500, color: '#2C1810', fontFamily: "'DM Sans', sans-serif" },
   sub: { fontSize: 11, color: '#A89070', marginTop: 1 },
-  closeBtn: {
-    fontSize: 14, color: '#A89070', cursor: 'pointer',
-    background: 'none', border: 'none', padding: '4px 6px',
-    borderRadius: 6, transition: 'all 0.15s ease',
-    fontFamily: 'inherit',
-  },
-  messages: {
-    flex: 1, overflowY: 'auto', padding: 12,
-    display: 'flex', flexDirection: 'column', gap: 10,
-  },
-  bubble: {
-    maxWidth: '86%', fontSize: 12, lineHeight: 1.65,
-    padding: '9px 13px', borderRadius: 16,
-    fontFamily: "'DM Sans', system-ui, sans-serif",
-  },
-  bubbleUser: {
-    background: '#F0E6D3', color: '#2C1810',
-    borderBottomRightRadius: 4,
-  },
-  bubbleAi: {
-    background: '#F7F3EF', color: '#3D2418',
-    borderBottomLeftRadius: 4,
-    border: '1px solid #EDE5D8',
-  },
-  inputRow: {
-    padding: '10px 12px', borderTop: '1px solid #F0E8DF',
-    display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0,
-  },
-  input: {
-    flex: 1, fontSize: 12, padding: '8px 14px',
-    borderRadius: 99, border: '1px solid #E0D5C8',
-    background: '#FAF7F2', color: '#2C1810',
-    outline: 'none', fontFamily: "'DM Sans', system-ui, sans-serif",
-    transition: 'border-color 0.15s ease',
-  },
-  sendBtn: {
-    width: 32, height: 32, borderRadius: '50%',
-    background: '#2C1810', color: 'white',
-    fontSize: 15, border: 'none', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0, transition: 'all 0.15s ease',
-  },
+  closeBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#A89070' },
+  messages: { flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 14 },
+  bubble: { maxWidth: '86%', fontSize: 12, lineHeight: 1.65, padding: '9px 13px', borderRadius: 16 },
+  bubbleUser: { background: '#F0E6D3', color: '#2C1810', borderBottomRightRadius: 4 },
+  bubbleAi: { background: '#F7F3EF', color: '#3D2418', borderBottomLeftRadius: 4, border: '1px solid #EDE5D8' },
+  inputRow: { padding: '10px 12px', borderTop: '1px solid #F0E8DF', display: 'flex', gap: 8 },
+  input: { flex: 1, fontSize: 12, padding: '8px 14px', borderRadius: 99, border: '1px solid #E0D5C8' },
+  sendBtn: { width: 32, height: 32, borderRadius: '50%', background: '#2C1810', color: 'white', border: 'none' },
+  cardContainer: { display: 'flex', flexDirection: 'column', gap: 8, width: '95%', paddingLeft: 4 },
+  cafeCard: { background: 'white', borderRadius: 12, border: '1px solid #EDE5D8', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
+  cardTitle: { fontSize: 13, fontWeight: 600, color: '#2C1810' },
+  cardMeta: { fontSize: 11, margin: '4px 0', display: 'flex', alignItems: 'center' },
+  cardAddress: { fontSize: 11, color: '#A89070', lineHeight: 1.3 },
 }
