@@ -6,16 +6,13 @@ html, body, #root {
   height: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior: none; /* prevents pull-to-refresh on mobile */
+  overscroll-behavior: none;
 }
 
 button { cursor: pointer; font-family: inherit; }
 img { display: block; max-width: 100%; }
 
-/* Prevent font size adjustment on iOS */
 html { -webkit-text-size-adjust: 100%; }
-
-/* Remove tap highlight on mobile */
 * { -webkit-tap-highlight-color: transparent; }
 
 ::-webkit-scrollbar { width: 3px; }
@@ -28,33 +25,41 @@ html { -webkit-text-size-adjust: 100%; }
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes slideUp {
   from { transform: translateY(100%); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* ── Google Maps info window overrides ── */
 .gm-style .gm-style-iw-c {
-  border-radius: 16px !important;
   padding: 0 !important;
-  width: 240px !important;
-  max-width: 240px !important;
-  max-height: fit-content !important;
-  overflow: visible !important;
-  box-shadow: 0 8px 32px rgba(44,24,16,0.15) !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 20px rgba(44,24,16,0.15) !important;
+  max-width: 200px !important;
+  width: 200px !important;
+  max-height: none !important;
+  background: #ffffff !important;
 }
 
 .gm-style .gm-style-iw-d {
   overflow: hidden !important;
+  padding: 0 !important;
   max-height: none !important;
 }
 
-.gm-style .gm-style-iw-tc::after { background: #FAF7F2 !important; }
+.gm-style .gm-style-iw-d > div {
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+.gm-style .gm-style-iw-tc::after {
+  background: #ffffff !important;
+}
 
 .gm-ui-hover-effect { display: none !important; }
 .gm-style-iw-ch { display: none !important; }
+
+.gm-style-iw-t::after { display: none !important; }
